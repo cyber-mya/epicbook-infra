@@ -25,7 +25,11 @@ stages:
       displayName: 'Download SSH Public Key'
 
     # 2️⃣ Copy SSH key into Terraform module folder
+
     - script: |
+        echo "Creating compute module directory if it doesn't exist..."
+        mkdir -p $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute/
+
         echo "Copying SSH public key into Terraform module"
         mkdir -p ~/.ssh
         cp $(download_ssh_key.secureFilePath) ~/.ssh/azure_vm_key.pub
@@ -71,5 +75,5 @@ stages:
     - script: |
         echo "Cleaning up secure files..."
         rm -f ~/.ssh/id_rsa.pub
-        rm -f $(System.DefaultWorkingDirectory)/azure/dev.tfvars
+        rm -f $(System.DefaultWorkingDirectory)/epicbook-infra/dev.tfvars
       displayName: 'Clean Up Secure Files'
