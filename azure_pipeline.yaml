@@ -55,26 +55,23 @@ stages:
     - task: AzureCLI@2
       displayName: 'Terraform Init, Plan, and Apply'
       inputs:
-    azureSubscription: 'arm-epicbook-spn'
-    scriptType: bash
-    scriptLocation: inlineScript
-    workingDirectory: $(System.DefaultWorkingDirectory)/epicbook-infra   # <-- correct folder
-    inlineScript: |
-      echo "Listing Terraform files in working directory..."
-      ls -al
+        azureSubscription: 'arm-epicbook-spn'
+        scriptType: bash
+        scriptLocation: inlineScript
+        workingDirectory: $(System.DefaultWorkingDirectory)/epicbook-infra   # <-- POINT TO FOLDER WITH YOUR .tf FILES
+        inlineScript: |
+          echo "Initializing Terraform..."
+          terraform init -input=false
 
-      echo "Initializing Terraform..."
-      terraform init -input=false
+          echo "Planning Terraform changes..."
+          terraform plan -input=false -var-file=../dev.tfvars
 
-      echo "Planning Terraform changes..."
-      terraform plan -input=false -var-file=dev.tfvars
-
-      echo "Applying Terraform..."
-      terraform apply -input=false -auto-approve -var-file=dev.tfvars
+          echo "Applying Terraform..."
+          terraform apply -input=false -auto-approve -var-file=../dev.tfvars
 
     # 6️⃣ Clean up secure files after use
-    -script: |
+    - script: |
         echo "Cleaning up secure files..."
         rm -f $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute/azure_vm_key.pub
         rm -f $(System.DefaultWorkingDirectory)/epicbook-infra/dev.tfvars
-        displayName: 'Clean Up Secure Files'
+      displayName: 'Clean Up Secure Files'
