@@ -17,84 +17,59 @@ stages:
 
     steps:
 
-    # =========================
-    # 1️⃣ Checkout repo
-    # =========================
-    - checkout: self
-      clean: true
-      displayName: 'Checkout Epicbook Infra Repo'
-
-    # =========================
-    # 2️⃣ Download SSH public key from Secure Files
-    # =========================
+    # 1️⃣ Download SSH Public Key from Secure Files
     - task: DownloadSecureFile@1
       name: download_ssh_key
       inputs:
         secureFile: 'azure_vm_key.pub'
       displayName: 'Download SSH Public Key'
 
-    # =========================
-    # 3️⃣ Copy SSH key into Terraform module
-    # =========================
+    # 2️⃣ Copy SSH key into Terraform module folder
     - script: |
-        echo "Creating module folder if it doesn't exist..."
-        mkdir -p $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute/
-
-        echo "Copying SSH public key into Terraform module..."
-        cp $(download_ssh_key.secureFilePath) $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute/azure_vm_key.pub
-
-        echo "Listing contents of modules/compute/ for verification:"
-        ls -al $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute/
+        echo "Copying SSH public key into Terraform module"
+        mkdir -p ~/.ssh
+        cp $(download_ssh_key.secureFilePath) ~/.ssh/azure_vm_key.pub
+        cp $(download_ssh_key.secureFilePath) $(System.DefaultWorkingDirectory)/modules/compute/id_rsa_azure.pub
+        echo "Listing contents of modules/compute/"
+        ls -al $(System.DefaultWorkingDirectory)/modules/compute/
       displayName: 'Prepare SSH Public Key for Terraform'
 
-    # =========================
-    # 4️⃣ Download Terraform variables file (dev.tfvars) from Secure Files
-    # =========================
+    # 3️⃣ Download Terraform variable file (dev.tfvars.txt) securely
     - task: DownloadSecureFile@1
       name: download_tfvars
       inputs:
         secureFile: 'dev.tfvars.txt'
       displayName: 'Download Terraform Variable File'
 
-    # =========================
-    # 5️⃣ Copy & rename dev.tfvars into Terraform working directory
-    # =========================
+    # 4️⃣ Copy & rename the secure file into Terraform working directory
     - script: |
-        echo "Copying dev.tfvars file to Terraform working directory..."
-        cp $(download_tfvars.secureFilePath) $(System.DefaultWorkingDirectory)/epicbook-infra/dev.tfvars
-
-        echo "Verify dev.tfvars exists:"
-        ls -al $(System.DefaultWorkingDirectory)/epicbook-infra/dev.tfvars
+        echo "Copying tfvars file to Terraform working directory..."
+        cp $(download_tfvars.secureFilePath) $(System.DefaultWorkingDirectory)/dev.tfvars
+        echo "Secure file copied and renamed successfully:"
+        ls -al $(System.DefaultWorkingDirectory)/dev.tfvars
       displayName: 'Prepare dev.tfvars for Terraform'
 
-    # =========================
-    # 6️⃣ Terraform Init, Plan, and Apply
-    # =========================
+    # 5️⃣ Terraform Init, Plan, and Apply
     - task: AzureCLI@2
       displayName: 'Terraform Init, Plan, and Apply'
       inputs:
-        azureSubscription: 'arm-epicbook-spn' # Your Azure Service Connection
+        azureSubscription: 'arm-epicbook-spn'  # Your service connection
         scriptType: bash
         scriptLocation: inlineScript
-        workingDirectory: $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute
+        workingDirectory: $(System.DefaultWorkingDirectory)
         inlineScript: |
-          echo "Listing Terraform files in working directory:"
-          ls -al
-
           echo "Initializing Terraform..."
           terraform init -input=false
 
           echo "Planning Terraform changes..."
-          terraform plan -input=false -var-file=../../dev.tfvars
+          terraform plan -input=false -var-file=dev.tfvars
 
           echo "Applying Terraform..."
-          terraform apply -input=false -auto-approve -var-file=../../dev.tfvars
+          terraform apply -input=false -auto-approve -var-file=dev.tfvars
 
-    # =========================
-    # 7️⃣ Clean up secure files (optional)
-    # =========================
+    # 6️⃣ Optional: Clean up secure files after use
     - script: |
         echo "Cleaning up secure files..."
-        rm -f $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute/azure_vm_key.pub
-        rm -f $(System.DefaultWorkingDirectory)/epicbook-infra/dev.tfvars
+        rm -f ~/.ssh/azure_vm_key.pub
+        rm -f $(System.DefaultWorkingDirectory)/dev.tfvars
       displayName: 'Clean Up Secure Files'
