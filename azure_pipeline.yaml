@@ -32,7 +32,6 @@ stages:
       inputs:
         secureFile: 'azure_vm_key.pub'
       displayName: 'Download SSH Public Key'
-      # After this step, the SSH key is at: $(download_ssh_key.secureFilePath)
 
     # =========================
     # 3️⃣ Copy SSH key into Terraform module
@@ -49,14 +48,13 @@ stages:
       displayName: 'Prepare SSH Public Key for Terraform'
 
     # =========================
-    # 4️⃣ Download Terraform variables file (dev.tfvars.txt) from Secure Files
+    # 4️⃣ Download Terraform variables file (dev.tfvars) from Secure Files
     # =========================
     - task: DownloadSecureFile@1
       name: download_tfvars
       inputs:
         secureFile: 'dev.tfvars.txt'
       displayName: 'Download Terraform Variable File'
-      # After this step, dev.tfvars.txt is at: $(download_tfvars.secureFilePath)
 
     # =========================
     # 5️⃣ Copy & rename dev.tfvars into Terraform working directory
@@ -78,7 +76,7 @@ stages:
         azureSubscription: 'arm-epicbook-spn' # Your Azure Service Connection
         scriptType: bash
         scriptLocation: inlineScript
-        workingDirectory: $(System.DefaultWorkingDirectory)/epicbook-infra  # <-- folder containing your .tf files
+        workingDirectory: $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute
         inlineScript: |
           echo "Listing Terraform files in working directory:"
           ls -al
@@ -87,10 +85,10 @@ stages:
           terraform init -input=false
 
           echo "Planning Terraform changes..."
-          terraform plan -input=false -var-file=dev.tfvars
+          terraform plan -input=false -var-file=../../dev.tfvars
 
           echo "Applying Terraform..."
-          terraform apply -input=false -auto-approve -var-file=dev.tfvars
+          terraform apply -input=false -auto-approve -var-file=../../dev.tfvars
 
     # =========================
     # 7️⃣ Clean up secure files (optional)
