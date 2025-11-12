@@ -24,21 +24,19 @@ stages:
         secureFile: 'azure_vm_key.pub'
       displayName: 'Download SSH Public Key'
 
-    # 2️⃣ Copy SSH key into Terraform module folder
-
+    # 2️⃣ Prepare SSH Key in Terraform module
     - script: |
         echo "Creating compute module directory if it doesn't exist..."
         mkdir -p $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute/
 
-        echo "Copying SSH public key into Terraform module"
-        mkdir -p ~/.ssh
-        cp $(download_ssh_key.secureFilePath) ~/.ssh/azure_vm_key.pub
+        echo "Copying SSH public key into Terraform module..."
         cp $(download_ssh_key.secureFilePath) $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute/azure_vm_key.pub
-        echo "Listing contents of azure/modules/compute/"
+
+        echo "Listing contents of modules/compute/"
         ls -al $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute/
       displayName: 'Prepare SSH Public Key for Terraform'
 
-    # 3️⃣ Download Terraform variable file (dev.tfvars.txt) securely
+    # 3️⃣ Download Terraform variable file securely
     - task: DownloadSecureFile@1
       name: download_tfvars
       inputs:
@@ -49,7 +47,7 @@ stages:
     - script: |
         echo "Copying tfvars file to Terraform working directory..."
         cp $(download_tfvars.secureFilePath) $(System.DefaultWorkingDirectory)/epicbook-infra/dev.tfvars
-        echo "Secure file copied and renamed successfully:"
+        echo "Secure file copied successfully:"
         ls -al $(System.DefaultWorkingDirectory)/epicbook-infra/dev.tfvars
       displayName: 'Prepare dev.tfvars for Terraform'
 
@@ -57,23 +55,23 @@ stages:
     - task: AzureCLI@2
       displayName: 'Terraform Init, Plan, and Apply'
       inputs:
-        azureSubscription: 'arm-epicbook-spn'  # Your service connection
+        azureSubscription: 'arm-epicbook-spn'
         scriptType: bash
         scriptLocation: inlineScript
-        workingDirectory: $(System.DefaultWorkingDirectory)/epicbook-infra
+        workingDirectory: $(System.DefaultWorkingDirectory)/epicbook-infra/terraform   # <-- POINT TO FOLDER WITH YOUR .tf FILES
         inlineScript: |
           echo "Initializing Terraform..."
           terraform init -input=false
 
           echo "Planning Terraform changes..."
-          terraform plan -input=false -var-file=dev.tfvars
+          terraform plan -input=false -var-file=../dev.tfvars
 
           echo "Applying Terraform..."
-          terraform apply -input=false -auto-approve -var-file=dev.tfvars
+          terraform apply -input=false -auto-approve -var-file=../dev.tfvars
 
-    # 6️⃣ Optional: Clean up secure files after use
+    # 6️⃣ Clean up secure files after use
     - script: |
         echo "Cleaning up secure files..."
-        rm -f ~/.ssh/id_rsa.pub
+        rm -f $(System.DefaultWorkingDirectory)/epicbook-infra/modules/compute/azure_vm_key.pub
         rm -f $(System.DefaultWorkingDirectory)/epicbook-infra/dev.tfvars
       displayName: 'Clean Up Secure Files'
